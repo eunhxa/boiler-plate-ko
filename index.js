@@ -3,6 +3,8 @@ const app = express()
 const port = 5000
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
+const { User } = require("./models/User")
+const { auth } = require('./middleware/auth')
 
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
@@ -21,9 +23,7 @@ app.get('/', (req, res) => {
   res.send('Hello World!')
 })
 
-const { User } = require("./models/User")
-
-app.post('/register', (req, res) => {
+app.post('/api/users/register', (req, res) => {
     // 회원가입 시 필요한 정보를 client에서 가져와서 데이터베이스에 넣기
     const user = new User(req.body);
     user.save((err, userInfo) => {
@@ -34,7 +34,7 @@ app.post('/register', (req, res) => {
     })
 })
 
-app.post('/login', (req, res) => {
+app.post('/api/users/login', (req, res) => {
     // 요청된 이메일을 데이터베이스에 있는지 찾기
     User.findOne({email: req.body.email}, (err, userInfo) => {
         if(!userInfo) {
@@ -58,6 +58,28 @@ app.post('/login', (req, res) => {
             }) 
         })
 
+    })
+})
+
+app.get('/api/users/auth', auth, (req, res) => {
+    res.status(200).json({
+        _id: req.user._id,
+        idAdmin: req.user.role === 0 ? false : true,
+        isAuth: true,
+        email: req.user.email,
+        name: req.user.name,
+        lastname: req.user.lastname,
+        image: req.user.image,
+        role: req.user.role
+    });
+})
+
+app.get('/api/users/logout', auth, (req, res) => {
+    User.findOneAndUpdate({"_id": req.user._id}, 
+    {token: ""},
+    (err, user) => {
+        if(err) return res.json({success: false, err});
+        return res.status(200).send({success: true});
     })
 })
 
